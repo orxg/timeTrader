@@ -4,7 +4,7 @@ Created on Mon Jul 31 17:25:31 2017
 
 @author: LDH
 
-定义基础事件类。
+定义事件。
 """
 
 # event.py
@@ -12,9 +12,11 @@ Created on Mon Jul 31 17:25:31 2017
 from __future__ import print_function
 
 from enum import Enum
+from constants import *
 
-
-EventType = Enum("EventType", "TICK BAR SIGNAL ORDER FILL SENTIMENT")
+__all__ = ['Event','BarEvent','OrderEvent',
+           'SignalEvent','FillEvent']
+EventType = Enum("EventType", "BAR SIGNAL ORDER FILL")
 
 
 class Event(object):
@@ -25,124 +27,57 @@ class Event(object):
     def typename(self):
         return self.type.name
 
-
-class TickEvent(Event):
-    """
-    Handles the event of receiving a new market update tick,
-    which is defined as a ticker symbol and associated best
-    bid and ask from the top of the order book.
-    """
-    def __init__(self, ticker, time, bid, ask):
-        """
-        Initialises the TickEvent.
-
-        Parameters:
-        ticker - The ticker symbol, e.g. 'GOOG'.
-        time - The timestamp of the tick
-        bid - The best bid price at the time of the tick.
-        ask - The best ask price at the time of the tick.
-        """
-        self.type = EventType.TICK
-        self.ticker = ticker
-        self.time = time
-        self.bid = bid
-        self.ask = ask
-
-    def __str__(self):
-        return "Type: %s, Ticker: %s, Time: %s, Bid: %s, Ask: %s" % (
-            str(self.type), str(self.ticker),
-            str(self.time), str(self.bid), str(self.ask)
-        )
-
-    def __repr__(self):
-        return str(self)
-
-
 class BarEvent(Event):
     """
-    Handles the event of receiving a new market
-    open-high-low-close-volume bar, as would be generated
-    via common data providers such as Yahoo Finance.
+    Bar事件。
     """
     def __init__(
-        self, ticker, time, period,
-        open_price, high_price, low_price,
-        close_price, volume, adj_close_price=None
+        self, ticker, datetime,
+        open_price,high_price,low_price,close_price,
+        volume,adj_close_price=None
     ):
         """
-        Initialises the BarEvent.
+        初始化BarEvent。
 
         Parameters:
-        ticker - The ticker symbol, e.g. 'GOOG'.
-        time - The timestamp of the bar
-        period - The time period covered by the bar in seconds
-        open_price - The unadjusted opening price of the bar
-        high_price - The unadjusted high price of the bar
-        low_price - The unadjusted low price of the bar
-        close_price - The unadjusted close price of the bar
-        volume - The volume of trading within the bar
-        adj_close_price - The vendor adjusted closing price
-            (e.g. back-adjustment) of the bar
+        ------------
+        
+            ticker 
+                股票代码，如600340  
+            datetime 
+                bar的时间.支持datetime对象与'YYMMDD'格式 
+            open_price
+                bar的开盘
+            high_price
+                bar的最高
+            low_price
+                bar的最低
+            close_price
+                bar的收盘
+            volume
+                成交量
+            adj_close_price
+                前复权收盘
 
-        Note: It is not advised to use 'open', 'close' instead
-        of 'open_price', 'close_price' as 'open' is a reserved
-        word in Python.
         """
         self.type = EventType.BAR
         self.ticker = ticker
-        self.time = time
-        self.period = period
+        self.datetime = datetime
         self.open_price = open_price
         self.high_price = high_price
         self.low_price = low_price
         self.close_price = close_price
         self.volume = volume
         self.adj_close_price = adj_close_price
-        self.period_readable = self._readable_period()
-
-    def _readable_period(self):
-        """
-        Creates a human-readable period from the number
-        of seconds specified for 'period'.
-
-        For instance, converts:
-        * 1 -> '1sec'
-        * 5 -> '5secs'
-        * 60 -> '1min'
-        * 300 -> '5min'
-
-        If no period is found in the lookup table, the human
-        readable period is simply passed through from period,
-        in seconds.
-        """
-        lut = {
-            1: "1sec",
-            5: "5sec",
-            10: "10sec",
-            15: "15sec",
-            30: "30sec",
-            60: "1min",
-            300: "5min",
-            600: "10min",
-            900: "15min",
-            1800: "30min",
-            3600: "1hr",
-            86400: "1day",
-            604800: "1wk"
-        }
-        if self.period in lut:
-            return lut[self.period]
-        else:
-            return "%ssec" % str(self.period)
 
     def __str__(self):
-        format_str = "Type: %s, Ticker: %s, Time: %s, Period: %s, " \
+        format_str = "Type: %s, Ticker: %s, Datetime: %s, " \
             "Open: %s, High: %s, Low: %s, Close: %s, " \
             "Adj Close: %s, Volume: %s" % (
-                str(self.type), str(self.ticker), str(self.time),
-                str(self.period_readable), str(self.open_price),
-                str(self.high_price), str(self.low_price),
-                str(self.close_price), str(self.adj_close_price),
+                str(self.type), str(self.ticker), str(self.datetime),
+                str(self.open_price),str(self.high_price), 
+                str(self.low_price),str(self.close_price), 
+                str(self.adj_close_price),
                 str(self.volume)
             )
         return format_str
@@ -153,41 +88,43 @@ class BarEvent(Event):
 
 class SignalEvent(Event):
     """
-    Handles the event of sending a Signal from a Strategy object.
-    This is received by a Portfolio object and acted upon.
+    策略产生的信号事件。
     """
-    def __init__(self, ticker, action, suggested_quantity=None):
+    def __init__(self, ticker,action,quantity=None):
         """
-        Initialises the SignalEvent.
+        初始化信号事件。
 
         Parameters:
-        ticker - The ticker symbol, e.g. 'GOOG'.
-        action - 'BOT' (for long) or 'SLD' (for short).
-        suggested_quantity - Optional positively valued integer
-            representing a suggested absolute quantity of units
-            of an asset to transact in, which is used by the
-            PositionSizer and RiskManager.
+        ------------
+            ticker
+                股票代码。
+            action 
+                买卖动作,BUY或者SELL.
+            quantity
+                买卖数量。
         """
         self.type = EventType.SIGNAL
         self.ticker = ticker
         self.action = action
-        self.suggested_quantity = suggested_quantity
+        self.quantity = quantity
 
 
 class OrderEvent(Event):
     """
-    Handles the event of sending an Order to an execution system.
-    The order contains a ticker (e.g. GOOG), action (BOT or SLD)
-    and quantity.
+    下单事件。
     """
     def __init__(self, ticker, action, quantity):
         """
-        Initialises the OrderEvent.
+        初始化下单事件。
 
-        Parameters:
-        ticker - The ticker symbol, e.g. 'GOOG'.
-        action - 'BOT' (for long) or 'SLD' (for short).
-        quantity - The quantity of shares to transact.
+        Parameters
+        ----------
+            ticker
+                股票代码
+            action 
+                买卖动作,BUY或者SELL
+            quantity
+                买卖数量
         """
         self.type = EventType.ORDER
         self.ticker = ticker
@@ -196,7 +133,7 @@ class OrderEvent(Event):
 
     def print_order(self):
         """
-        Outputs the values within the OrderEvent.
+        输出事件信息。
         """
         print(
             "Order: Ticker=%s, Action=%s, Quantity=%s" % (
@@ -207,62 +144,46 @@ class OrderEvent(Event):
 
 class FillEvent(Event):
     """
-    Encapsulates the notion of a filled order, as returned
-    from a brokerage. Stores the quantity of an instrument
-    actually filled and at what price. In addition, stores
-    the commission of the trade from the brokerage.
-
-    TODO: Currently does not support filling positions at
-    different prices. This will be simulated by averaging
-    the cost.
+    订单反馈事件。
     """
 
     def __init__(
-        self, timestamp, ticker,
+        self, datetime, ticker,
         action, quantity,
-        exchange, price,
+        match_price,
         commission
     ):
         """
-        Initialises the FillEvent object.
-
-        timestamp - The timestamp when the order was filled.
-        ticker - The ticker symbol, e.g. 'GOOG'.
-        action - 'BOT' (for long) or 'SLD' (for short).
-        quantity - The filled quantity.
-        exchange - The exchange where the order was filled.
-        price - The price at which the trade was filled
-        commission - The brokerage commission for carrying out the trade.
+        初始化订单反馈事件。
+        
+        Parameters
+        -----------
+            datetime
+                订单完成时间
+            ticker 
+                股票代码
+            action 
+                买卖方向
+            quantity 
+                成交数量
+            match_price 
+                成交价
+            commission
+                交易费用
         """
         self.type = EventType.FILL
-        self.timestamp = timestamp
+        self.datetime = datetime
         self.ticker = ticker
         self.action = action
         self.quantity = quantity
-        self.exchange = exchange
-        self.price = price
+        self.match_price = match_price
         self.commission = commission
 
 
-class SentimentEvent(Event):
-    """
-    Handles the event of streaming a "Sentiment" value associated
-    with a ticker. Can be used for a generic "date-ticker-sentiment"
-    service, often provided by many data vendors.
-    """
-    def __init__(self, timestamp, ticker, sentiment):
-        """
-        Initialises the SentimentEvent.
-
-        Parameters:
-        timestamp - The timestamp when the sentiment was generated.
-        ticker - The ticker symbol, e.g. 'GOOG'.
-        sentiment - A string, float or integer value of "sentiment",
-            e.g. "bullish", -1, 5.4, etc.
-        """
-        self.type = EventType.SENTIMENT
-        self.timestamp = timestamp
-        self.ticker = ticker
-        self.sentiment = sentiment
 
 
+if __name__ == '__main__':
+    barEvent = BarEvent('600340','20160104',20,21,19.8,20.5,230000,20.5)
+    signalEvent = SignalEvent('600340',BUY,34000)
+    orderEvent = OrderEvent('600340',BUY,34000)
+    fillEvent = FillEvent('20160104','600340',BUY,34000,20.7,50)
