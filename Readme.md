@@ -15,7 +15,7 @@
 
 # 约定
 ## 命名规则
-模块名: event,signalSender  
+模块名/文件名: event,signalSender
 方法/函数: get_data  
 类名: HistoryDataHandler  
 对象: historyDataHandler  
@@ -55,6 +55,10 @@ backtest:整合相关模块，实现回测功能
 setting:整合回测、live交易，提供封装后的顶层接口  
 
 ## 模块
+### data
+#### tushareDatabase
+提供基于tushare的数据库创建、维护、提取等功能的接口。自由性极强。数据库默认为MySQL.
+
 ### strategy
 strategy:提供策略抽象，后续继承  
 multiFactorStrategy:提供多因子策略抽象，后续策略继承  
