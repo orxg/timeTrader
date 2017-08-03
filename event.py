@@ -16,6 +16,7 @@ from constants import *
 
 __all__ = ['Event','BarEvent','OrderEvent',
            'SignalEvent','FillEvent']
+
 EventType = Enum("EventType", "BAR SIGNAL ORDER FILL")
 
 
