@@ -88,3 +88,7 @@ calendar:提供交易日历
 
 # 更新日志
 
+# 所需软件
+1. python2.7(Anaconda)
+2. pymysql
+3. tushare
