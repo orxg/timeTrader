@@ -7,14 +7,44 @@ Created on Sun Jun 11 16:12:52 2017
 
 # database.py
 
-import tushare as ts
-import pymysql
+from __future__ import print_function
 import datetime as dt
+
+import pandas as pd
+import pymysql
+import tushare as ts
 
 db_host = 'localhost'
 db_user = 'sec_user'
 db_pass = '123456'
 db_name = 'securities' 
+
+def update_tradedate_calendar():
+    '''
+    更新MySQL数据库中的交易日历。
+    '''
+    start_date = '1990-01-01'
+    end_date = dt.date.today().strftime('%Y-%m-%d')
+    tradedates = ts.get_k_data('000001',start = start_date,
+                               end = end_date,
+                               index = True)[['date']]
+    
+    tradedates.date = pd.to_datetime(tradedates.date)
+    now = dt.date.today()
+    tradedates['last_updated_time'] = now
+    
+    con = pymysql.connect(
+            db_host,
+            db_user,
+            db_pass,
+            db_name,
+            charset = 'utf8')
+    
+    with con:
+        tradedates.to_sql('tradedates',con,flavor = 'mysql',
+                          if_exists = 'replace')
+        
+    print('成功更新交易日历数据tradedates')
 
 def date_time_str_convertor(date):
     try:
@@ -88,5 +118,7 @@ if __name__ == '__main__':
 #==============================================================================
 #     get_symbols_save_into_db()
 #==============================================================================
-    symbols = initilize_daily_price_pregened()
-
+#==============================================================================
+#     symbols = initilize_daily_price_pregened()
+#==============================================================================
+    update_tradedate_calendar()
