@@ -54,22 +54,25 @@ class TushareMySQLDataProvider():
         '''
         
         sql = '''
-        SELECT * FROM daily_price dp 
-        INNER JOIN symbols s
-        ON dp.id = s.id
+        SELECT dp.date_time,dp.open_price,
+        dp.high_price,dp.low_price,dp.close_price,
+        dp.volume
+        FROM daily_price as dp 
+        INNER JOIN symbols as s
+        ON dp.stock_id = s.id
         WHERE s.ticker = {ticker}
-        AND dp.date >= {start_date}
-        AND dp.date <= {end_date}
+        AND dp.date_time >= {start_date}
+        AND dp.date_time <= {end_date}
         '''.format(ticker = ticker,
         start_date = start_date,
         end_date = end_date)
         
-        daily_price_df = pd.read_sql(sql,self.con,parse_dates = ['date'])
+        daily_price_df = pd.read_sql(sql,self.con,parse_dates = ['date_time'])
         return daily_price_df
 
 if __name__ == '__main__':
     dataProvider = TushareMySQLDataProvider()
-    df = dataProvider.get_daily_price('600340','20150101','20160101')
+    df = dataProvider.get_daily_price('600340','20060101','20160101')
     dataProvider.close()
     
     

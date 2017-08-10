@@ -3,13 +3,18 @@
 Created on Sun Jun 11 16:12:52 2017
 
 @author: ldh
+
+比较尴尬的点：
+    1. pd.Timestamp对象不支持直接写入MySQL
+    2. date,datetime是MySQL的关键字，不要当做列名
+    3. 外键不能正常添加
 """
 
 # database.py
 
 from __future__ import print_function
 import datetime as dt
-from multiprocessing import Pool,cpu_count
+import time
 
 import pandas as pd
 import pymysql
@@ -92,13 +97,9 @@ def get_symbols_save_into_db(mode = 'replace'):
     con.close()
     print('成功更新symbols表(股票基本信息)')
 
-def save_daily_price_pregened_from_tushare(data_tuple):
+def save_daily_price_pregened_from_tushare(data_tuple,con):
     '''
     根据股票代码代码与上市时间获得其前复权交易数据存储到数据库当中。
-    目前存在问题: 
-        1.unknow encoding: cp0
-        File \anaconda\lib\multiprocessing\pool.py", line 567, in get raise self._value        
-        2.关闭kernel后pool中仍然有进程在运行。
     
     Parameter
     ---------
@@ -107,44 +108,41 @@ def save_daily_price_pregened_from_tushare(data_tuple):
             timeToMarket:股票上市时间        
             _id:在数据库中的id
     '''
-    con = pymysql.connect(
-            host = db_host,
-            user = db_user,
-            passwd = db_pass,
-            db = db_name,
-            charset = 'utf8')
-    
     ticker = data_tuple[0]
     timeToMarket = data_tuple[1]
     _id = data_tuple[2]
-        
+    
     timeToMarket = timeToMarket.strftime('%Y-%m-%d')
     today = dt.datetime.today().strftime('%Y-%m-%d')
     
-    flags = 0
-    while True:
-        try:
-            stock_data = ts.get_k_data(ticker,timeToMarket,today)
-            stock_data.rename(columns = {
-                    'open':'open_price',
-                    'high':'high_price',
-                    'close':'close_price',
-                    'low':'low_price',
-                    'code':'ticker'},inplace = True)
-            stock_data['last_updated_time'] = dt.datetime.today()
-            stock_data.index = pd.to_datetime(stock_data.index)
-            stock_data['id'] = _id
-            
-            with con:
-                stock_data.to_sql('daily_price',con,flavor = 'mysql',if_exists = 'append')
-                print('%s \'s daily price was successfully saved into database'%ticker)
-            break
-        except:
-            flags += 1
-            if flags >= 10:
-                break
-            else:
-                continue
+    stock_data = ts.get_k_data(ticker,timeToMarket,today)
+    stock_data.rename(columns = {
+            'date':'date_time',
+            'open':'open_price',
+            'high':'high_price',
+            'close':'close_price',
+            'low':'low_price',
+            'code':'ticker'},inplace = True)
+    stock_data['stock_id'] = _id
+    stock_data['last_updated_time'] = dt.datetime.today().strftime('%Y%m%d')
+    
+    
+    daily_price = stock_data.values.tolist()    
+    
+    column_str = '''
+    date_time,open_price,close_price,high_price,low_price,volume,
+    ticker,stock_id,last_updated_time
+    '''
+    
+    insert_str = ('%s,' * 9)[:-1]
+    final_str = '''
+    INSERT INTO daily_price (%s) VALUES (%s)
+    '''%(column_str,insert_str)
+    with con:
+        cur = con.cursor()
+        cur.executemany(final_str,daily_price)
+    print('%s daily price was saved into the database successfully'%ticker)        
+        
     
     
 
@@ -166,19 +164,52 @@ def initilize_daily_price_pregened():
     cur.execute(sql_select_symbols)
     symbols = cur.fetchall()
     
-    p = Pool(cpu_count())
-    p.map(save_daily_price_pregened_from_tushare,symbols)
+
+
+    sql_create_table_schema = '''
+    DROP TABLE IF EXISTS daily_price;
+    CREATE TABLE  daily_price (
+    id int not null primary key auto_increment,
+    date_time datetime,
+    open_price double,
+    high_price double,
+    low_price double,
+    close_price double,
+    volume double,
+    ticker varchar(32),
+    stock_id int not null,
+    last_updated_time datetime,
+    KEY idx_stock_id (stock_id)
+    )ENGINE=InnoDB DEFAULT CHARSET=utf8;
+    '''
+    cur = con.cursor()
+    cur.execute(sql_create_table_schema)
     
-#==============================================================================
-#     for ticker,time_to_market in symbols:
-#         ticker_data = ts.get_k_data(ticker)
-#==============================================================================
+    print('Daily price table was successfully created')
+    
+    total_stock_num = len(symbols)
+    for idx,symbol in enumerate(symbols):
+        try:
+            save_daily_price_pregened_from_tushare(symbol,con)
+            print('%s \ %s'%(idx,total_stock_num))
+        except Exception as e:
+            print('%s was failed to save into the database !!!!!!'%symbol[0])
+            print(e)
+            print('%s \ %s'%(idx,total_stock_num))
+        continue
+    con.close()       
+    
+    
+
+    
+def initialize_financial_factors():
+    '''
+    初始化数据库中的财务数据。
+    '''
+    pass
     
 if __name__ == '__main__':
 #==============================================================================
-#     get_symbols_save_into_db()
+#     initilize_daily_price_pregened()
 #==============================================================================
-    initilize_daily_price_pregened()
-#==============================================================================
-#     update_tradedate_calendar()
-#==============================================================================
+
