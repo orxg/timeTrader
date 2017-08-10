@@ -9,6 +9,7 @@ Created on Sun Jun 11 16:12:52 2017
 
 from __future__ import print_function
 import datetime as dt
+from multiprocessing import Pool,cpu_count
 
 import pandas as pd
 import pymysql
@@ -91,10 +92,65 @@ def get_symbols_save_into_db(mode = 'replace'):
     con.close()
     print('成功更新symbols表(股票基本信息)')
 
+def save_daily_price_pregened_from_tushare(data_tuple):
+    '''
+    根据股票代码代码与上市时间获得其前复权交易数据存储到数据库当中。
+    目前存在问题: 
+        1.unknow encoding: cp0
+        File \anaconda\lib\multiprocessing\pool.py", line 567, in get raise self._value        
+        2.关闭kernel后pool中仍然有进程在运行。
+    
+    Parameter
+    ---------
+        data_tuple:(ticker,timeToMarket,_id)
+            ticker:股票代码
+            timeToMarket:股票上市时间        
+            _id:在数据库中的id
+    '''
+    con = pymysql.connect(
+            host = db_host,
+            user = db_user,
+            passwd = db_pass,
+            db = db_name,
+            charset = 'utf8')
+    
+    ticker = data_tuple[0]
+    timeToMarket = data_tuple[1]
+    _id = data_tuple[2]
+        
+    timeToMarket = timeToMarket.strftime('%Y-%m-%d')
+    today = dt.datetime.today().strftime('%Y-%m-%d')
+    
+    flags = 0
+    while True:
+        try:
+            stock_data = ts.get_k_data(ticker,timeToMarket,today)
+            stock_data.rename(columns = {
+                    'open':'open_price',
+                    'high':'high_price',
+                    'close':'close_price',
+                    'low':'low_price',
+                    'code':'ticker'},inplace = True)
+            stock_data['last_updated_time'] = dt.datetime.today()
+            stock_data.index = pd.to_datetime(stock_data.index)
+            stock_data['id'] = _id
+            
+            with con:
+                stock_data.to_sql('daily_price',con,flavor = 'mysql',if_exists = 'append')
+                print('%s \'s daily price was successfully saved into database'%ticker)
+            break
+        except:
+            flags += 1
+            if flags >= 10:
+                break
+            else:
+                continue
+    
+    
+
 def initilize_daily_price_pregened():
     '''
     初始化数据库前复权数据。
-    
     '''
     con = pymysql.connect(
             host = db_host,
@@ -104,21 +160,25 @@ def initilize_daily_price_pregened():
             charset = 'utf8')
     
     sql_select_symbols = '''
-    SELECT ticker,timeToMarket FROM symbols;
+    SELECT ticker,timeToMarket,id FROM symbols;
     '''
     cur = con.cursor()
     cur.execute(sql_select_symbols)
     symbols = cur.fetchall()
     
-    return symbols
-    for ticker,time_to_market in symbols:
-        ticker_data = ts.get_k_data(ticker)
+    p = Pool(cpu_count())
+    p.map(save_daily_price_pregened_from_tushare,symbols)
+    
+#==============================================================================
+#     for ticker,time_to_market in symbols:
+#         ticker_data = ts.get_k_data(ticker)
+#==============================================================================
     
 if __name__ == '__main__':
 #==============================================================================
 #     get_symbols_save_into_db()
 #==============================================================================
+    initilize_daily_price_pregened()
 #==============================================================================
-#     symbols = initilize_daily_price_pregened()
+#     update_tradedate_calendar()
 #==============================================================================
-    update_tradedate_calendar()
