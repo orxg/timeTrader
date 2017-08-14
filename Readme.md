@@ -15,7 +15,7 @@
 
 # 约定
 ## 命名规则
-模块名/文件名: event,signalSender
+模块名/文件名: event,signal_sender
 方法/函数: get_data  
 类名: HistoryDataHandler  
 对象: historyDataHandler  
@@ -39,7 +39,13 @@ Return
 ## data数据结构
 
 # 架构
-采用事件驱动架构。
+实现BacktestEngine,根据策略编写其initilize方法与handle_data方法。BacktestEngine实例化对象实现start_backtest方法对回测进行封装。
+
+backtest_data_initilizer：根据指定参数，初始化回测所需的交易数据。为回测提供数据接口。
+context:共享backtest_data_initilizer的数据接口,与blotter进行交互。提供查询、下单、接收交易反馈的功能。
+blotter:共享backtest_data_initilizer的数据接口,与context进行交互。提供根据交易数据进行撮合的功能，提供下单指令反馈，停牌判定。其共享数据提前context一个交易日(日间)。
+recorder:对账户状况进行记录,对交易效果进行统计。
+order:该对象提供对订单的描述。
 
 ## 主目录
 constants:定义常量  
@@ -92,3 +98,5 @@ calendar:提供交易日历
 1. python2.7(Anaconda)
 2. pymysql
 3. tushare
+
+## 说明

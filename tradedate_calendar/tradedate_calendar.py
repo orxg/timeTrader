@@ -31,12 +31,20 @@ SELECT date from tradedates
 with con:
     dates = pd.read_sql(sql,con,parse_dates = ['date'])['date']
 
+
 class TradeDateCalendar():
     
-    def __init__(self):
+    def __init__(self,start_date = None,end_date = None):
         '''
         初始化交易日历。
+        
+        Parameters
+        ----------
+            start_date:'20160101'
+            end_date:'20160101' 若为None则默认取得全部。
         '''
+        self.start_date = start_date
+        self.end_date = end_date
         self.tradedates = dates
         
     def move_n_tradedays(self,date,n = 1):
@@ -81,6 +89,6 @@ class TradeDateCalendar():
         
 
 if __name__ == '__main__':
-    CAL = TradeDateCalendar()
+    CAL = TradeDateCalendar('20160101','20160321')
     
 

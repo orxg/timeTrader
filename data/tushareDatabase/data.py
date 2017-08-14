@@ -72,7 +72,7 @@ class TushareMySQLDataProvider():
 
 if __name__ == '__main__':
     dataProvider = TushareMySQLDataProvider()
-    df = dataProvider.get_daily_price('600340','20060101','20160101')
+    df = dataProvider.get_daily_price('600340','20060101','20160131')
     dataProvider.close()
     
     

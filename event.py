@@ -4,7 +4,7 @@ Created on Mon Jul 31 17:25:31 2017
 
 @author: LDH
 
-定义事件。
+定义事件。此模块暂时没用了。
 """
 
 # event.py
