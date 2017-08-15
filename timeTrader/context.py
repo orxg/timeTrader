@@ -60,9 +60,12 @@ class Context():
         
         Parameters
         ----------
-            ticker:股票代码
-            direction:方向
-            amount：数量，如300股
+            ticker
+                股票代码
+            direction
+                方向
+            amount
+                数量，如300股
         '''
         order_price = self.data_provider.current_date_data[ticker][1]['open_price']
         
