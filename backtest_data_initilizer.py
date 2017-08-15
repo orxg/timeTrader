@@ -50,14 +50,14 @@ class BacktestDataInitilizer():
         
     def _prepare_data(self):
         '''
-        准备数据。按日进行存储。
+        准备数据。按ticker进行存储。
         '''
         for stock_ticker in self.universe:
             trade_data = data_provider.get_daily_price(stock_ticker,
                                                        self.start_date,
                                                        self.end_date)
             trade_data = trade_data.set_index('date_time')
-            trade_data = trade_data.reindex(pd.Series(self.calendar_list))
+            trade_data = trade_data.reindex(self.calendar_list)
             trade_data = trade_data.fillna(method = 'pad')
             self._history_data[stock_ticker] = trade_data
 

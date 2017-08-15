@@ -6,6 +6,7 @@ Created on Mon Aug 14 13:05:20 2017
 
 顶层。
 封装回测、模拟交易的逻辑。
+
 """
 
 # backtest_engine.py
@@ -47,6 +48,7 @@ class BacktestEngine():
         self.trading_frequency = 'd'
         self.rebalance_frequency = '1'
         
+        self._construct_backtest_environment()
     
     @abstractmethod
     def initilize(self):
@@ -77,10 +79,11 @@ class BacktestEngine():
                 self.end_date)
         
         self.blotter = Blotter(self.data)
-        self.context = Context(self.cash,self.blotter) 
-        self.recorder = Recorder(self.universe,
-                                 self.start_date,
-                                 self.end_date)
+        self.context = Context(self.cash,
+                               self.universe,
+                               self.blotter,
+                               self.data) 
+        self.recorder = Recorder()
 
         
     def _run_backtest(self):
@@ -88,20 +91,25 @@ class BacktestEngine():
         回测。
         '''
         # 获取交易日历
-        trading_calendar = None
+        trading_calendar = self.data.calendar_list
         
  
         
         # 进行回测
         self.initilize()
         for tradeDate in trading_calendar:
-            self.data.refresh_data() # 更新data对象在当前交易日所能获得的数据,当前交易日的数据
+            self.data.refresh_data() # 更新data对象在当前交易日所能获得的数据以及当前交易日的数据
+            print('here1')
             self.handle_data() # 执行交易逻辑,向blotter中添加订单
-            match_result = self.blotter.match() # 执行撮合,返回撮合结果
-            self.context.refresh_account_from_match_result(match_result) # 根据撮合结果更新账户
+            print('here2')
+            self.blotter.match() # 执行撮合
+            print('here3')
+            self.context.refresh_account_from_match_result() # 根据撮合结果更新账户
+            print('here4')
             self.context.refresh_account_from_market() # 根据市场状况更新账户
-            self.recorder.record() # 记录当前的账户的状况
-    
+            print('here5')
+            self.recorder.record_context(self.context.portfolio_value) # 记录当前的账户的状况
+            print('here6')
         print('The backtest is over.')
         
     def start_backtest(self):
@@ -112,7 +120,13 @@ class BacktestEngine():
            
 
 if __name__ == '__main__':
-    pass
+    class buy_and_hold(BacktestEngine):
+        def handle_data(self):
+            self.context.order('600340',1,100)
+            
+    easy_test = buy_and_hold(['600340'],'20160101','20170101')
+
+
 
 
 
