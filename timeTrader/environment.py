@@ -73,5 +73,11 @@ if __name__ == '__main__':
     if env == Environment.get_instance():
         print('Successful')
     
+    config = {'start_date':'20150101',
+              'end_date':'20160101',
+              'initial_cash':100000,
+              'frequency':'1d',
+              'rebalance_frequency':'1'}
+    
     
         
