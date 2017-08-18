@@ -10,16 +10,17 @@ Created on Mon Aug 14 14:41:40 2017
 
 from order.order import Order,FillOrder
 
-class Blotter():
+class Broker():
     '''
-    提供撮合功能。
+    做市商。
     '''
-    def __init__(self,data_provider):
+    def __init__(self,env):
         '''
         撮合器，记录订单信息，根据data_provider提供的接口进行成交判定，
         反馈成交结果。
         '''
-        self.data_provider = data_provider
+        self.env = env
+        
         self.current_orders_universe = [] # 当前所有订单信息
         self.current_fillorders_universe = [] # 当前所有反馈信息
 

@@ -120,7 +120,9 @@ class Context():
             self._total_market_value += self._market_value[ticker]
             
         self._portfolio_value = self._total_market_value + self.cash
-            
+     
+	def test_method(self):
+		print 'Hello,world'
             
     
     

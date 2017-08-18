@@ -7,7 +7,7 @@ Created on Thu Aug 10 10:09:51 2017
 import pymysql 
 import pandas as pd
 
-class TushareMySQLDataProvider():
+class TushareMySQLDataProxy():
     '''
     MySQL中通过Tushare获取的数据库的api.
     '''
@@ -69,7 +69,18 @@ class TushareMySQLDataProvider():
         
         daily_price_df = pd.read_sql(sql,self.con,parse_dates = ['date_time'])
         return daily_price_df
-
+	
+	def get_calendar(self, start_date,end_date):
+		'''
+		获取交易日历的list.
+		'''
+		sql = 
+		'''
+		SELECT date from tradedates
+		'''
+		dates = pd.read_sql(sql,con,parse_dates = ['date'])['date']
+		return dates[start_date:end_date].tolist()
+		
 if __name__ == '__main__':
     dataProvider = TushareMySQLDataProvider()
     df = dataProvider.get_daily_price('600340','20060101','20160131')
